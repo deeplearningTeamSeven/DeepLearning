@@ -1,0 +1,5 @@
+classes= 100
+train=/content/drive/MyDrive/yolov4/train.txt
+valid=/content/drive/MyDrive/yolov4/valid.txt
+names=/content/drive/MyDrive/yolov4/obj.names
+backup=/content/drive/MyDrive/yolov4/training
