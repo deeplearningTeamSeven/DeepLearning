@@ -3,6 +3,9 @@ import cv2
 import numpy as np
 import time
 from class_info import class_name
+from PIL import ImageFont, ImageDraw, Image
+import matplotlib.pyplot as plt
+import unicodedata
 
 # size = 모델 학습할 때 설정했던 값    
 def image_preprocessing(img, size) :
@@ -19,8 +22,8 @@ def image_preprocessing(img, size) :
 
 def load_model(origin_image, input) :
     current_dir = os.path.abspath('.')
-    weight_dir = os.path.join(current_dir, 'yolo_model/yolov4.weights')
-    config_dir = os.path.join(current_dir, 'yolo_model/yolov4.cfg')
+    weight_dir = os.path.join(current_dir, 'yolo_model/yolov4-custom_best.weights')
+    config_dir = os.path.join(current_dir, 'yolo_model/yolov4-custom.cfg')
 
     yolo_net = cv2.dnn.readNetFromDarknet(config_dir, weight_dir)
     layer_name = yolo_net.getLayerNames()
@@ -33,18 +36,20 @@ def load_model(origin_image, input) :
     start_time = time.time()
     detect_result = yolo_net.forward(outlayer_names) # inference 후 원하는 layer의 feature map 정보 추출 (예측된 경계상자 정보 있음)
     print('detect_result 길이:', len(detect_result))
-
+    print(detect_result)
     get_object_info(detect_result, origin_image)
     print('detect 시간:', round(time.time() - start_time, 2), '초')
 
-    # detect_result -> detection 수행한 결과
+    # return detect_result -> detection 수행한 결과
 
 
 def get_object_info(detect_result, image):
     row = image.shape[0]
     col = image.shape[1]
 
+    # 이 값이 작을수록 많은 클래스를 잡아냄
     conf_threshold = 0.5
+    # 이 값이 작을수록 겹쳐진 네모가 많아짐
     nms_threshold = 0.4
 
     class_index = []
@@ -95,17 +100,31 @@ def get_object_info(detect_result, image):
             border_color = colors[class_index[idx]]
             caption = "{}: {:.4f}".format(class_name[class_index[idx]], confidence_list[idx])
 
-            size, _=cv2.getTextSize(caption,cv2.FONT_HERSHEY_SIMPLEX,1,2)
- 
-            cv2.rectangle(draw_image, (x - 1, y), (x + size[0], y-size[1]-10), border_color, -1) # 클래스 이름이 적힌 위치에 그림 그리기
+            # 유니코드 처리 방식을 변경 -> 자음 모음 분리문제 해결
+            object_class = unicodedata.normalize('NFC', class_name[class_index[idx]])
+
+            size, _=cv2.getTextSize(object_class,cv2.FONT_HERSHEY_PLAIN,1,40)
+
+            label_location_x = int(x + width / 2)
+            label_location_y = int(y + height / 2)
+            cv2.rectangle(draw_image, (label_location_x, label_location_y), (label_location_x+size[0], label_location_y+size[1]+20), border_color, -1) # 클래스 이름이 적힌 위치에 그림 그리기
             cv2.rectangle(draw_image, (int(x), int(y)), (int(x+width), int(y+height)), color=border_color, thickness=4)
-            cv2.putText(draw_image, caption, (x, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            print(caption)
+            # cv2.putText(draw_image, caption, (x, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            
+
+            #### 클래스를 한글로 표현하기 위한 작업
+            # content_edit = unicodedata.normalize('NFC', class_name[class_index[idx]])
+            draw_image = Image.fromarray(draw_image)
+            font=ImageFont.truetype('font/NanumSquare_0.ttf', 40)
+            draw = ImageDraw.Draw(draw_image)
+            # draw.text((x, y-size[1]-25),  object_class, font=font, fill=(0,0,0))
+            draw.text((label_location_x, label_location_y),  object_class, font=font, fill=(0,0,0))
+            draw_image = np.array(draw_image)
+            #######################
+            print(caption, (int(x), int(y)), (int(x+width), int(y+height)))
+
     img_rgb = cv2.cvtColor(draw_image, cv2.IMREAD_COLOR)
     cv2.imwrite('res.jpg', img_rgb)
-    # cv2.imshow("img", img_rgb)
-    # cv2.waitKey()
-
 
 
 # origin_image, input = image_preprocessing(1, (416, 416))

@@ -24,7 +24,7 @@ def index():
             image = cv2.imdecode(np.fromstring(image, dtype = np.uint8), cv2.IMREAD_COLOR)
             print(image)
 
-            origin_image, input = image_preprocessing(image, (416, 416))
+            origin_image, input = image_preprocessing(image, (512, 512))
             load_model(origin_image, input)
     
     return '<h1>Hello Flask!</h1>'
